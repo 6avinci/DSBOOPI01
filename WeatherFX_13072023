@@ -1,0 +1,324 @@
+package com.example.weatherfx;
+
+import javafx.animation.FadeTransition;
+import javafx.application.Application;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.TextAlignment;
+import javafx.scene.text.TextFlow;
+import javafx.stage.Stage;
+import javafx.scene.layout.StackPane;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
+import javafx.scene.media.MediaView;
+import javafx.stage.StageStyle;
+import javafx.util.Duration;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Scanner;
+
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+import javafx.scene.text.Text;
+
+public class WetterFX extends Application {
+    private static final String API_KEY = "b20014fec8064d7eb3780143231306";
+    private MediaPlayer backgroundMediaPlayer;
+    private MediaPlayer drainMediaPlayer;
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
+    @Override
+    public void start(Stage primaryStage) {
+        primaryStage.setTitle("Wetter-App der Gruppe 4");
+        primaryStage.initStyle(StageStyle.UNDECORATED);
+
+        FadeTransition fadeInTransition = new FadeTransition(Duration.millis(2500));
+        fadeInTransition.setFromValue(0.0);
+        fadeInTransition.setToValue(3.0);
+
+        StackPane stackPane = new StackPane();
+
+        String backgroundVideoFile = "C:/Users/rvopilov/Downloads/Video/background.mp4";
+        Media backgroundMedia = new Media(new File(backgroundVideoFile).toURI().toString());
+        backgroundMediaPlayer = new MediaPlayer(backgroundMedia);
+        backgroundMediaPlayer.setAutoPlay(true);
+        backgroundMediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+        MediaView backgroundMediaView = new MediaView(backgroundMediaPlayer);
+        backgroundMediaView.fitWidthProperty().bind(stackPane.widthProperty());
+        backgroundMediaView.fitHeightProperty().bind(stackPane.heightProperty());
+
+        String drainVideoFile = "C:/Users/rvopilov/Downloads/Video/drain3.mp4";
+        Media drainMedia = new Media(new File(drainVideoFile).toURI().toString());
+        drainMediaPlayer = new MediaPlayer(drainMedia);
+        drainMediaPlayer.setAutoPlay(true);
+        drainMediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+        MediaView drainMediaView = new MediaView(drainMediaPlayer);
+        drainMediaView.fitWidthProperty().bind(stackPane.widthProperty());
+        drainMediaView.fitHeightProperty().bind(stackPane.heightProperty());
+
+        stackPane.getChildren().addAll(backgroundMediaView, drainMediaView);
+        drainMediaView.setVisible(false);
+
+        Label stadtLabel = new Label("Geben Sie die Stadt ein: " + "\n");
+        stadtLabel.setFont(new Font("Agency FB", 20));
+        stadtLabel.setStyle("-fx-font-weight: bold");
+        stadtLabel.setTranslateX(540);
+
+        Label stadtLabelW = new Label("Geben Sie die Stadt ein " + "\n");
+        stadtLabelW.setFont((new Font("Agency FB", 20)));
+        stadtLabelW.setStyle("-fx-font-weight: bold");
+        stadtLabelW.setTextFill(Color.WHITE);
+        stadtLabelW.setTranslateX(540);
+
+        TextField cityTextField = new TextField();
+        cityTextField.setFont(new Font("Agency FB", 20));
+        cityTextField.setMaxWidth(240);
+        cityTextField.setAlignment(Pos.CENTER);
+        cityTextField.setTranslateX(455);
+
+        Button Suche = new Button("Suchen");
+        Suche.setFont(new Font("Agency FB", 21));
+        Suche.setTranslateX(692);
+        Suche.setTranslateY(-59);
+
+        TextFlow resultLabel = new TextFlow();
+        resultLabel.setTextAlignment(TextAlignment.CENTER);
+        resultLabel.setPrefWidth(600);
+        resultLabel.setPrefHeight(300);
+
+        VBox searchBox = new VBox(20);
+        searchBox.setPadding(new Insets(20));
+        searchBox.getChildren().addAll(stadtLabel, stadtLabelW, cityTextField, Suche, resultLabel);
+        stackPane.getChildren().add(searchBox);
+
+        Scene scene = new Scene(stackPane, 1280, 720);
+        primaryStage.setScene(scene);
+        primaryStage.show();
+
+        Suche.setOnAction(e -> {
+            String city = cityTextField.getText();
+            if (!city.isEmpty()) {
+                try {
+                    String weatherData = getWeatherData(city);
+                    String temperatur = parseTemperatureFromData(weatherData);
+                    String niederschlag = parseNiederschlagFromData(weatherData);
+                    String Sicht = parseSichtFromData(weatherData);
+                    String GefuhltC = parseGefuhltFromData(weatherData);
+                    String Wind = parseWindFromData(weatherData);
+                    String Luftfeuchtigkeit = parseLuftfeuchteFromData(weatherData);
+                    String uv = parseUVFromData(weatherData);
+                    double niederschlagsWert = Double.parseDouble(niederschlag);
+                    double uvwert = Double.parseDouble(uv);
+                    Text Standard = new Text("Temperatur in " + city + ": " + temperatur + " °C" + "\n\nUV-Index: " + uv + "\n\nNiederschlag in " + city + ": " + niederschlag + " mm" + "\n\nSicht in " + city + ": " + Sicht + " km" +
+                            "\n\nGefühlt sind es in " + city + ": " + GefuhltC + " °C" + "\n\nWind weht mit: " + Wind + " km/h" + "\n\nLuftfeuchtigkeit in " + city + ": " + Luftfeuchtigkeit + " %");
+                    Standard.setFont(Font.font("Agency FB", 20));
+                    Standard.setStyle("-fx-font-weight: bold");
+                    resultLabel.getChildren().clear();
+                    resultLabel.getChildren().addAll(Standard);
+                    resultLabel.setPrefWidth(resultLabel.getBoundsInLocal().getWidth());
+                    resultLabel.setLayoutX((scene.getWidth() - resultLabel.getPrefWidth()) / 2);
+                    resultLabel.setLayoutY((scene.getHeight() - resultLabel.getPrefHeight()) / 2);
+
+                    if (uvwert > 2) {
+
+                        String weatherData2 = getWeatherData(city);
+                        String temperatur2 = parseTemperatureFromData(weatherData);
+                        String niederschlag2 = parseNiederschlagFromData(weatherData);
+                        String Sicht2 = parseSichtFromData(weatherData);
+                        String GefuhltC2 = parseGefuhltFromData(weatherData);
+                        String Wind2 = parseWindFromData(weatherData);
+                        String Luftfeuchtigkeit2 = parseLuftfeuchteFromData(weatherData);
+                        String uv2 = parseUVFromData(weatherData);
+                        double niederschlagsWert2 = Double.parseDouble(niederschlag);
+                        double uvwert2 = Double.parseDouble(uv);
+
+                        Text Creme = new Text("Temperatur in " + city + ": " + temperatur2 + " °C" + "\n\nUV-Index: " + uv2 + "\n\n \uD83D\uDC49Vergiss die Sonnencreme nicht!\uD83D\uDC48" + "\n\nNiederschlag in " + city + ": " + niederschlag2 + " mm" + "\n\nSicht in " + city + ": " + Sicht2 + " km" +
+                                "\n\nGefühlt sind es in " + city + ": " + GefuhltC2 + " °C" + "\n\nWind weht mit: " + Wind2 + " km/h" + "\n\nLuftfeuchtigkeit in " + city + ": " + Luftfeuchtigkeit2 + " %");
+                        Creme.setFont(Font.font("Agency FB", 20));
+                        Creme.setStyle("-fx-font-weight: bold");
+                        resultLabel.getChildren().clear();
+                        resultLabel.getChildren().addAll(Creme);
+                        resultLabel.setPrefWidth(resultLabel.getBoundsInLocal().getWidth());
+                        resultLabel.setLayoutX((scene.getWidth() - resultLabel.getPrefWidth()) / 2);
+                        resultLabel.setLayoutY((scene.getHeight() - resultLabel.getPrefHeight()) / 2);
+
+                    }
+
+                    if (niederschlagsWert > 0) {
+
+                        String weatherData3 = getWeatherData(city);
+                        String temperatur3 = parseTemperatureFromData(weatherData);
+                        String niederschlag3 = parseNiederschlagFromData(weatherData);
+                        String Sicht3 = parseSichtFromData(weatherData);
+                        String GefuhltC3 = parseGefuhltFromData(weatherData);
+                        String Wind3 = parseWindFromData(weatherData);
+                        String Luftfeuchtigkeit3 = parseLuftfeuchteFromData(weatherData);
+                        String uv3 = parseUVFromData(weatherData);
+                        double niederschlagsWert3 = Double.parseDouble(niederschlag);
+                        double uvwert3 = Double.parseDouble(uv);
+
+                        Text Regenschirm = new Text("Temperatur in " + city + ": " + temperatur3 + " °C" + "\n\nUV-Index: " + uv3 + "\n\nNiederschlag in " + city + ": " + niederschlag3 + " mm" + "\n\n \uD83D\uDC49Nimm einen Regenschirm mit, Valera!\uD83D\uDC48" + "\n\nSicht in " + city + ": " + Sicht3 + " km" +
+                                "\n\nGefühlt sind es in " + city + ": " + GefuhltC3 + " °C" + "\n\nWind weht mit: " + Wind3 + " km/h" + "\n\nLuftfeuchtigkeit in " + city + ": " + Luftfeuchtigkeit3 + " %");
+                        Regenschirm.setFont(Font.font("Agency FB", 20));
+                        Regenschirm.setStyle("-fx-font-weight: bold");
+                        Regenschirm.setFill(Color.WHITE);
+                        resultLabel.getChildren().clear();
+                        resultLabel.getChildren().addAll(Regenschirm);
+                        resultLabel.setPrefWidth(resultLabel.getBoundsInLocal().getWidth());
+                        resultLabel.setLayoutX((scene.getWidth() - resultLabel.getPrefWidth()) / 2);
+                        resultLabel.setLayoutY((scene.getHeight() - resultLabel.getPrefHeight()) / 2);
+
+                    }
+
+                    if (niederschlagsWert > 0 && uvwert > 2) {
+
+                        String weatherData4 = getWeatherData(city);
+                        String temperatur4 = parseTemperatureFromData(weatherData4);
+                        String niederschlag4 = parseNiederschlagFromData(weatherData4);
+                        String Sicht4 = parseSichtFromData(weatherData4);
+                        String GefuhltC4 = parseGefuhltFromData(weatherData4);
+                        String Wind4 = parseWindFromData(weatherData4);
+                        String Luftfeuchtigkeit4 = parseLuftfeuchteFromData(weatherData4);
+                        String uv4 = parseUVFromData(weatherData4);
+                        Text RegenCreme = new Text("Temperatur in " + city + ": " + temperatur4 + " °C" + "\n\nUV-Index: " + uv4 + "\n\n \uD83D\uDC49Vergiss die Sonnencreme nicht!\uD83D\uDC48" + "\n\nNiederschlag in " + city + ": " + niederschlag4 + " mm" + "\n\n \uD83D\uDC49Nimm einen Regenschirm mit, Valera!\uD83D\uDC48" + "\n\nSicht in " + city + ": " + Sicht4 + " km" +
+                                "\n\nGefühlt sind es in " + city + ": " + GefuhltC4 + " °C" + "\n\nWind weht mit: " + Wind4 + " km/h" + "\n\nLuftfeuchtigkeit in " + city + ": " + Luftfeuchtigkeit4 + " %");
+                        RegenCreme.setFont(Font.font("Agency FB", 20));
+                        RegenCreme.setStyle("-fx-font-weight: bold");
+                        RegenCreme.setFill(Color.WHITE);
+                        resultLabel.getChildren().clear();
+                        resultLabel.getChildren().addAll(RegenCreme);
+                        resultLabel.setPrefWidth(resultLabel.getBoundsInLocal().getWidth());
+                        resultLabel.setLayoutX((scene.getWidth() - resultLabel.getPrefWidth()) / 2);
+                        resultLabel.setLayoutY((scene.getHeight() - resultLabel.getPrefHeight()) / 2);
+
+                    }
+
+                    boolean isCurrentlyRaining = niederschlagsWert > 0;
+                    if (isCurrentlyRaining) {
+                        playNewVideo(stackPane, true);
+                    } else {
+                        playNewVideo(stackPane, false);
+                    }
+                } catch (IOException | ParseException ex) {
+                    Text API = new Text("API ist mal wieder Scheiße");
+                    API.setFont(Font.font("Agency FB", 20));
+                    API.setStyle("-fx-font-weight: bold");
+                    resultLabel.getChildren().clear();
+                    resultLabel.getChildren().addAll(API);
+                    resultLabel.setPrefWidth(resultLabel.getBoundsInLocal().getWidth());
+                    resultLabel.setLayoutX((scene.getWidth() - resultLabel.getPrefWidth()) / 2);
+                }
+            }
+        });
+
+        stackPane.setOpacity(0.0);
+        fadeInTransition.setNode(stackPane);
+        fadeInTransition.play();
+    }
+
+    private void playNewVideo(StackPane stackPane, boolean isRaining) {
+        if (isRaining) {
+            backgroundMediaPlayer.stop();
+            backgroundMediaPlayer.seek(Duration.ZERO);
+            backgroundMediaPlayer.pause();
+            drainMediaPlayer.play();
+        } else {
+            drainMediaPlayer.stop();
+            drainMediaPlayer.seek(Duration.ZERO);
+            drainMediaPlayer.pause();
+            backgroundMediaPlayer.play();
+        }
+
+        stackPane.getChildren().get(1).setVisible(isRaining);
+    }
+
+    private String getWeatherData(String city) throws IOException {
+        URL api = new URL("https://api.weatherapi.com/v1/current.json?q=" + city + "&key=" + API_KEY);
+        HttpURLConnection conn = (HttpURLConnection) api.openConnection();
+        conn.setRequestMethod("GET");
+        conn.connect();
+
+        int responseCode = conn.getResponseCode();
+        if (responseCode == 200) {
+            StringBuilder weatherData = new StringBuilder();
+            try (Scanner input = new Scanner(api.openStream())) {
+                while (input.hasNext()) {
+                    weatherData.append(input.nextLine());
+                }
+            }
+            return weatherData.toString();
+        } else {
+            throw new IOException("Fehler: " + responseCode);
+        }
+    }
+
+    private String parseTemperatureFromData(String weatherData) throws ParseException {
+        JSONParser parser = new JSONParser();
+        JSONObject data = (JSONObject) parser.parse(weatherData);
+        JSONObject current = (JSONObject) data.get("current");
+        double tempC = (double) current.get("temp_c");
+        return Double.toString(tempC);
+    }
+
+    private String parseNiederschlagFromData(String weatherData) throws ParseException {
+        JSONParser parser = new JSONParser();
+        JSONObject data = (JSONObject) parser.parse(weatherData);
+        JSONObject current = (JSONObject) data.get("current");
+        double niederschlag = (double) current.get("precip_mm");
+        return Double.toString(niederschlag);
+    }
+
+    private String parseSichtFromData(String weatherData) throws ParseException {
+        JSONParser parser = new JSONParser();
+        JSONObject data = (JSONObject) parser.parse(weatherData);
+        JSONObject current = (JSONObject) data.get("current");
+        double sicht = (double) current.get("vis_km");
+        return Double.toString(sicht);
+    }
+
+    private String parseGefuhltFromData(String weatherData) throws ParseException {
+        JSONParser parser = new JSONParser();
+        JSONObject data = (JSONObject) parser.parse(weatherData);
+        JSONObject current = (JSONObject) data.get("current");
+        double gefuhlt = (double) current.get("feelslike_c");
+        return Double.toString(gefuhlt);
+    }
+
+    private String parseWindFromData(String weatherData) throws ParseException {
+        JSONParser parser = new JSONParser();
+        JSONObject data = (JSONObject) parser.parse(weatherData);
+        JSONObject current = (JSONObject) data.get("current");
+        double wind = (double) current.get("wind_kph");
+        return Double.toString(wind);
+    }
+
+    private String parseLuftfeuchteFromData(String weatherData) throws ParseException {
+        JSONParser parser = new JSONParser();
+        JSONObject data = (JSONObject) parser.parse(weatherData);
+        JSONObject current = (JSONObject) data.get("current");
+        double luftfeuchte = (Long) current.get("humidity");
+        return Long.toString((long) luftfeuchte);
+    }
+
+    private String parseUVFromData(String weatherData) throws ParseException {
+        JSONParser parser = new JSONParser();
+        JSONObject data = (JSONObject) parser.parse(weatherData);
+        JSONObject current = (JSONObject) data.get("current");
+        double uv = (double) current.get("uv");
+        return Double.toString(uv);
+    }
+}
